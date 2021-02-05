@@ -1,5 +1,13 @@
 package yatzy.main;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 public class Yatzy {
 	protected int[] dice;
 
@@ -47,12 +55,11 @@ public class Yatzy {
 	public static int yatzy(int... dice) {
 		int compare = dice[0];
 
-		for (int i = 1; i < dice.length; i++) {
-			if (dice[i] != compare) {
-				return 0;
-			}
+		if (Arrays.stream(dice).allMatch(x -> x == compare)) {
+			return 50;
+		} else {
+			return 0;
 		}
-		return 50;
 
 	}
 
@@ -83,24 +90,71 @@ public class Yatzy {
 		return numbers_family(DICE_VALUE_SIX, dice);
 	}
 
+	public static int two_pair(int d1, int d2, int d3, int d4, int d5) {
+		List<Integer> list = construct_counter(d1, d2, d3, d4, d5);
+
+		return list.stream().filter(x -> Collections.frequency(list, x) >= 2).distinct().map(val -> val * 2)
+				.collect(Collectors.summingInt(Integer::intValue));
+	}
+
+	public static int score_pair(int d1, int d2, int d3, int d4, int d5) {
+		return x_of_a_kind(2, construct_counter(d1, d2, d3, d4, d5));
+	}
+
+	public static int four_of_a_kind(int d1, int d2, int d3, int d4, int d5) {
+		return x_of_a_kind(4, construct_counter(d1, d2, d3, d4, d5));
+	}
+
+	public static int three_of_a_kind(int d1, int d2, int d3, int d4, int d5) {
+		return x_of_a_kind(3, construct_counter(d1, d2, d3, d4, d5));
+	}
+
+	public static int smallStraight(int d1, int d2, int d3, int d4, int d5) {
+
+		List<Integer> withoutDuplicate = construct_counter_for_straight(d1, d2, d3, d4, d5);
+
+		if (withoutDuplicate.size() == 5 && withoutDuplicate.get(withoutDuplicate.size() - 1) == 5) {
+			return 15;
+		} else {
+			return 0;
+		}
+	}
+
+	public static int largeStraight(int d1, int d2, int d3, int d4, int d5) {
+
+		List<Integer> withoutDuplicate = construct_counter_for_straight(d1, d2, d3, d4, d5);
+
+		if (withoutDuplicate.size() == 5 && withoutDuplicate.get(withoutDuplicate.size() - 1) == 6) {
+			return 20;
+		} else {
+			return 0;
+		}
+	}
+
+	public static int fullHouse(int d1, int d2, int d3, int d4, int d5) {
+
+		List<Integer> dice = construct_counter(d1, d2, d3, d4, d5);
+		Optional<Integer> twoTime = dice.stream().filter(x -> Collections.frequency(dice, x) == 2).findFirst();
+		Optional<Integer> threeTime = dice.stream().filter(x -> Collections.frequency(dice, x) == 3).findFirst();
+
+		if (twoTime.isPresent() && threeTime.isPresent()) {
+			return twoTime.get() * 2 + threeTime.get() * 3;
+		} else {
+			return 0;
+		}
+
+	}
+
 	/**
-	 * Method use to add a given each time we get it
+	 * Method use to add a given number each time we get it
 	 * 
 	 * @param dice_value
 	 * @param dice
 	 * @return the result of the addition
 	 */
 	private static int numbers_family(int dice_value, int[] dice) {
-		int result = 0;
-
-		for (int value : dice) {
-			if (value == dice_value) {
-				result += dice_value;
-			}
-		}
-
-		return result;
-
+		List<Integer> collect = Arrays.stream(dice).boxed().collect(Collectors.toList());
+		return Collections.frequency(collect, dice_value) * dice_value;
 	}
 
 	/**
@@ -114,27 +168,26 @@ public class Yatzy {
 	 * @param d5
 	 * @return an array that matches the dice values
 	 */
-	private static int[] construct_counter(int d1, int d2, int d3, int d4, int d5) {
-		int[] counts = new int[6];
-		counts[d1 - 1]++;
-		counts[d2 - 1]++;
-		counts[d3 - 1]++;
-		counts[d4 - 1]++;
-		counts[d5 - 1]++;
-		return counts;
+	private static List<Integer> construct_counter(int d1, int d2, int d3, int d4, int d5) {
+		return IntStream.of(d1, d2, d3, d4, d5).boxed().collect(Collectors.toList());
+
 	}
 
-	public static int two_pair(int d1, int d2, int d3, int d4, int d5) {
-		int[] counts = construct_counter(d1, d2, d3, d4, d5);
+	/**
+	 * Method used to construct an array relative to how many times a dice value is
+	 * find, for the combination straight we have to eliminate duplicate and sort
+	 * the elements
+	 * 
+	 * @param d1
+	 * @param d2
+	 * @param d3
+	 * @param d4
+	 * @param d5
+	 * @return an array that matches the dice values
+	 */
+	private static List<Integer> construct_counter_for_straight(int d1, int d2, int d3, int d4, int d5) {
 
-		int result = 0;
-		for (int i = 0; i < counts.length; i++) {
-			if (counts[i] >= 2) {
-				result += (i + 1) * 2;
-			}
-		}
-
-		return result;
+		return IntStream.of(d1, d2, d3, d4, d5).boxed().distinct().sorted().collect(Collectors.toList());
 	}
 
 	/**
@@ -144,63 +197,11 @@ public class Yatzy {
 	 * @param dice
 	 * @return the result of the addition
 	 */
-	private static int x_of_a_kind(int pair_value, int[] dice) {
+	private static int x_of_a_kind(int pair_value, List<Integer> dice) {
 
-		for (int i = 5; i > 0; i--) {
-			if (dice[i] >= pair_value) {
-				return (i + 1) * pair_value;
-			}
-		}
+		int max = dice.stream().filter(x -> Collections.frequency(dice, x) >= pair_value)
+				.max(Comparator.comparing(Integer::valueOf)).get();
 
-		return 0;
-	}
-
-	public static int score_pair(int d1, int d2, int d3, int d4, int d5) {
-		int[] counts = construct_counter(d1, d2, d3, d4, d5);
-
-		return x_of_a_kind(2, counts);
-	}
-
-	public static int four_of_a_kind(int d1, int d2, int d3, int d4, int d5) {
-		int[] counts = construct_counter(d1, d2, d3, d4, d5);
-		return x_of_a_kind(4, counts);
-	}
-
-	public static int three_of_a_kind(int d1, int d2, int d3, int d4, int d5) {
-		int[] counts = construct_counter(d1, d2, d3, d4, d5);
-		return x_of_a_kind(3, counts);
-	}
-
-	public static int smallStraight(int d1, int d2, int d3, int d4, int d5) {
-		int[] counts = construct_counter(d1, d2, d3, d4, d5);
-		if (counts[0] == 1 && counts[1] == 1 && counts[2] == 1 && counts[3] == 1 && counts[4] == 1)
-			return 15;
-		return 0;
-	}
-
-	public static int largeStraight(int d1, int d2, int d3, int d4, int d5) {
-		int[] counts = construct_counter(d1, d2, d3, d4, d5);
-		if (counts[1] == 1 && counts[2] == 1 && counts[3] == 1 && counts[4] == 1 && counts[5] == 1)
-			return 20;
-		return 0;
-	}
-
-	public static int fullHouse(int d1, int d2, int d3, int d4, int d5) {
-
-		int[] counts = construct_counter(d1, d2, d3, d4, d5);
-		int result = 0;
-
-		for (int i = 0; i < counts.length; i++) {
-			if (counts[i] == 2) {
-				result += (i + 1) * 2;
-			}
-
-			if (counts[i] == 3) {
-				result += (i + 1) * 3;
-			}
-		}
-
-		return result;
-
+		return max * pair_value;
 	}
 }
